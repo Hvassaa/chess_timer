@@ -9,7 +9,10 @@ class Main extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Chess Timer',
-      home: ChessTimer(),
+      // home: ChessTimer(),
+      home: Scaffold(
+        body: ChessTimer(),
+      ),
     );
   }
 }
@@ -20,27 +23,133 @@ class ChessTimer extends StatefulWidget {
 }
 
 class _ChessTimerState extends State<ChessTimer> {
-  CountdownUnit c1 = CountdownUnit();
-  CountdownUnit c2 = CountdownUnit();
+  // the counters, responsible for time keeping and the associated text
+  CountdownUnit counter1;
+  CountdownUnit counter2;
+  // The "containers", which should draw buttons
+  var container1;
+  var container2;
+  var activedContainer1;
+  var activedContainer2;
+  var deactivedContainer1;
+  var deactivedContainer2;
+
+  @override
+  initState() {
+    super.initState();
+    counter1 = CountdownUnit();
+    counter2 = CountdownUnit();
+
+    // functions for pressing the clock-buttons
+    // starts the opponents clock, and stops yours
+    var f1 = () {
+      // Dont do anything if time expired
+      var hasEnded = counter1.getSeconds() == 0 || counter2.getSeconds() == 0;
+      if (hasEnded) {
+        counter1.stop();
+        counter2.stop();
+      } else {
+        counter1.stop();
+        counter2.start();
+        setState(() {
+          container1 = deactivedContainer1;
+          container2 = activedContainer2;
+        });
+      }
+    };
+    var f2 = () {
+      // Dont do anything if time expired
+      var hasEnded = counter1.getSeconds() == 0 || counter2.getSeconds() == 0;
+      if (hasEnded) {
+        counter1.stop();
+        counter2.stop();
+      } else {
+        counter2.stop();
+        counter1.start();
+        setState(() {
+          container2 = deactivedContainer2;
+          container1 = activedContainer1;
+        });
+      }
+    };
+
+    // the widget representing an "active" button; it's your turn
+    activedContainer1 = Expanded(
+      child: RotatedBox(
+        quarterTurns: 2,
+        child:
+            ElevatedButton(onPressed: f1, onLongPress: null, child: counter1),
+      ),
+    );
+    activedContainer2 = Expanded(
+      child: ElevatedButton(onPressed: f2, onLongPress: null, child: counter2),
+    );
+
+    // the widget representing a "deactivated" button; it's the opponent's turn
+    deactivedContainer1 = Expanded(
+      child: RotatedBox(
+        quarterTurns: 2,
+        child:
+            ElevatedButton(onPressed: null, onLongPress: null, child: counter1),
+      ),
+    );
+    deactivedContainer2 = Expanded(
+      child:
+          ElevatedButton(onPressed: null, onLongPress: null, child: counter2),
+    );
+
+    // initially both are active
+    container1 = activedContainer1;
+    container2 = activedContainer2;
+  }
 
   @override
   Widget build(BuildContext context) {
-    // time1seconds = time1millis ~/ 1000; // millis / 1000 = seconds
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        RotatedBox(
-          quarterTurns: 0,
-          // child: Text("$time1seconds")), // quarterTurns should be 2
-          child: c1,
-        ), // quarterTurns should be 2
-        FloatingActionButton(onPressed: () {
-          c1.start();
-        }),
-        c2,
+        container1,
+        Padding(
+          padding: EdgeInsets.all(30.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    pause();
+                    counter1.reset();
+                    counter2.reset();
+                  },
+                  child: Text(
+                    "Restart",
+                    style: TextStyle(fontSize: 30),
+                  ),
+                ),
+              ),
+              Expanded(
+                  child: OutlinedButton(
+                      onPressed: pause,
+                      child: Text(
+                        "Pause",
+                        style: TextStyle(fontSize: 30),
+                      ))),
+            ],
+          ),
+        ),
+        container2,
       ],
     );
+  }
+
+  void pause() {
+    counter1.stop();
+    counter2.stop();
+    setState(() {
+      container1 = activedContainer1;
+      container2 = activedContainer2;
+    });
   }
 }
 
@@ -49,6 +158,10 @@ class CountdownUnit extends StatefulWidget {
   @override
   _CountdownUnitState createState() => c;
 
+  void reset() {
+    c.reset();
+  }
+
   void start() {
     c.start();
   }
@@ -56,9 +169,14 @@ class CountdownUnit extends StatefulWidget {
   void stop() {
     c.stop();
   }
+
+  int getSeconds() {
+    return c.getSeconds();
+  }
 }
 
 class _CountdownUnitState extends State<CountdownUnit> {
+  int originalSeconds;
   int millis;
   int seconds;
   Timer timer;
@@ -66,13 +184,27 @@ class _CountdownUnitState extends State<CountdownUnit> {
   @override
   void initState() {
     super.initState();
-    seconds = 100;
-    millis = seconds * 1000;
+    originalSeconds = 5;
+    reset();
+  }
+
+  void reset() {
+    seconds = originalSeconds;
+    millis = originalSeconds * 1000;
+    setStateWrapper(seconds);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Text("$seconds");
+    // the idea here is to make the fontSize some decent size, and scale it down if needed
+    return FittedBox(
+      fit: BoxFit.fitHeight,
+      child: Text(
+        secsToMins(seconds),
+        // this seem like a fitting max size
+        style: TextStyle(fontSize: 100),
+      ),
+    );
   }
 
   void start() {
@@ -89,11 +221,17 @@ class _CountdownUnitState extends State<CountdownUnit> {
   }
 
   void decrementClock(Timer timer) {
-    //subtract 0.1 second from millis
-    millis -= 100;
-    // if a whole second has passed, decremnt seconds and set state
-    if (millis % 1000 == 0) {
-      setState(() => seconds -= 1);
+    bool moreTime = seconds > 0;
+    if (moreTime) {
+      //subtract 0.1 second from millis
+      millis -= 100;
+      // if a whole second has passed, decremnt seconds and set state
+      if (millis % 1000 == 0) {
+        // perform callback when reaching 0 secs
+        setStateWrapper(seconds -= 1);
+      }
+    } else {
+      timer.cancel();
     }
   }
 
@@ -104,5 +242,19 @@ class _CountdownUnitState extends State<CountdownUnit> {
       timer.cancel();
       timer = null;
     }
+  }
+
+  String secsToMins(int secs) {
+    int mins = secs ~/ 60;
+    int newSecs = secs % 60;
+    return "$mins:$newSecs";
+  }
+
+  void setStateWrapper(int secs) {
+    setState(() => secsToMins(secs));
+  }
+
+  int getSeconds() {
+    return seconds;
   }
 }
