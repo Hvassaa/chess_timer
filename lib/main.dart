@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+
+import 'package:flutter/services.dart';
 // import 'package:async/async.dart';
 
 void main() => runApp(Main());
@@ -143,11 +145,18 @@ class _ChessTimerState extends State<ChessTimer> {
                     icon: Icon(Icons.settings),
                     color: Colors.white,
                     iconSize: 50.0,
-                    onPressed: () {
-                      Navigator.push(context,
+                    onPressed: () async {
+                      pause();
+                      // result is the new seconds for the timer,
+                      // could be null, if no new time is given
+                      final result = await Navigator.push(context,
                           MaterialPageRoute(builder: (context) {
                         return SettingsScreen();
                       }));
+                      // update time
+                      if (result != 0) {
+                        setTime(result);
+                      }
                     },
                   ),
                 ),
@@ -182,6 +191,11 @@ class _ChessTimerState extends State<ChessTimer> {
       container2 = activedContainer2;
     });
   }
+
+  void setTime(int secs) {
+    counter1.setOriginalSeconds(secs);
+    counter2.setOriginalSeconds(secs);
+  }
 }
 
 class CountdownUnit extends StatefulWidget {
@@ -199,6 +213,10 @@ class CountdownUnit extends StatefulWidget {
 
   void stop() {
     c.stop();
+  }
+
+  void setOriginalSeconds(int secs) {
+    c.setOriginalSeconds(secs);
   }
 
   int getSeconds() {
@@ -278,11 +296,20 @@ class _CountdownUnitState extends State<CountdownUnit> {
   String secsToMins(int secs) {
     int mins = secs ~/ 60;
     int newSecs = secs % 60;
-    return "$mins:$newSecs";
+    String secsString = "$newSecs";
+    if (secsString.length < 2) {
+      secsString = "0" + secsString;
+    }
+    return "$mins:" + secsString;
   }
 
   void setStateWrapper(int secs) {
     setState(() => secsToMins(secs));
+  }
+
+  void setOriginalSeconds(int secs) {
+    originalSeconds = secs;
+    reset();
   }
 
   int getSeconds() {
@@ -296,6 +323,92 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  int newSeconds;
+  int newMinutes;
+  int newHours;
+  var secController;
+  var minController;
+  var hourController;
+  var secField;
+  var minField;
+  var hourField;
+
+  @override
+  void initState() {
+    super.initState();
+    newSeconds = 0;
+    newMinutes = 0;
+    newHours = 0;
+
+    double fieldWidth = 100;
+    secController = TextEditingController();
+    minController = TextEditingController();
+    hourController = TextEditingController();
+    secField = Container(
+      width: fieldWidth,
+      child: TextField(
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "Seconds",
+        ),
+        onChanged: (String value) {
+          var newS = int.parse(value);
+          newSeconds = newS;
+        },
+        controller: secController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+      ),
+    );
+    minField = Container(
+      width: fieldWidth,
+      child: TextField(
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "Minutes",
+        ),
+        onChanged: (String value) {
+          var newM = int.parse(value);
+          newMinutes = newM;
+        },
+        controller: minController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+      ),
+    );
+
+    hourField = Container(
+      width: fieldWidth,
+      child: TextField(
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "Hours",
+        ),
+        onChanged: (String value) {
+          var newH = int.parse(value);
+          newHours = newH;
+        },
+        controller: hourController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    secController.dispose();
+    minController.dispose();
+    hourController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -305,11 +418,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           leading: IconButton(
               icon: Icon(Icons.arrow_back),
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(context, 0);
               }),
           title: Text("Settings"),
         ),
-        body: Center(child: Text("HEllo")),
+        body: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text("Initial game time"),
+                hourField,
+                minField,
+                secField,
+                ElevatedButton(
+                  onPressed: () {
+                    int newTime =
+                        newSeconds + (newMinutes * 60) + (newHours * 60 * 60);
+                    Navigator.pop(context, newTime);
+                  },
+                  child: Icon(Icons.thumb_up),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
