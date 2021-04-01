@@ -116,25 +116,51 @@ class _ChessTimerState extends State<ChessTimer> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    pause();
-                    counter1.reset();
-                    counter2.reset();
-                  },
-                  child: Text(
-                    "Restart",
-                    style: TextStyle(fontSize: 30),
+                child: Ink(
+                  decoration: const ShapeDecoration(
+                    color: Colors.grey,
+                    shape: CircleBorder(),
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      pause();
+                      counter1.reset();
+                      counter2.reset();
+                    },
+                    icon: Icon(Icons.refresh),
+                    color: Colors.white,
+                    iconSize: 50.0,
                   ),
                 ),
               ),
               Expanded(
-                  child: OutlinedButton(
-                      onPressed: pause,
-                      child: Text(
-                        "Pause",
-                        style: TextStyle(fontSize: 30),
-                      ))),
+                child: Ink(
+                  decoration: const ShapeDecoration(
+                    color: Colors.grey,
+                    shape: CircleBorder(),
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.settings),
+                    color: Colors.white,
+                    iconSize: 50.0,
+                    onPressed: () {},
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Ink(
+                  decoration: const ShapeDecoration(
+                    color: Colors.grey,
+                    shape: CircleBorder(),
+                  ),
+                  child: IconButton(
+                    onPressed: pause,
+                    icon: Icon(Icons.pause),
+                    color: Colors.white,
+                    iconSize: 50.0,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
