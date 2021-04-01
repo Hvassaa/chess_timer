@@ -143,7 +143,12 @@ class _ChessTimerState extends State<ChessTimer> {
                     icon: Icon(Icons.settings),
                     color: Colors.white,
                     iconSize: 50.0,
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) {
+                        return SettingsScreen();
+                      }));
+                    },
                   ),
                 ),
               ),
@@ -282,5 +287,30 @@ class _CountdownUnitState extends State<CountdownUnit> {
 
   int getSeconds() {
     return seconds;
+  }
+}
+
+class SettingsScreen extends StatefulWidget {
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: "Settings",
+      home: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context);
+              }),
+          title: Text("Settings"),
+        ),
+        body: Center(child: Text("HEllo")),
+      ),
+    );
   }
 }
