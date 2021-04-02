@@ -332,10 +332,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   var secField;
   var minField;
   var hourField;
+  Function cancel;
 
   @override
   void initState() {
     super.initState();
+    cancel = () => Navigator.pop(context, 0);
     newSeconds = 0;
     newMinutes = 0;
     newHours = 0;
@@ -352,6 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           labelText: "Seconds",
         ),
         onChanged: (String value) {
+          newSeconds = 0;
           var newS = int.parse(value);
           newSeconds = newS;
         },
@@ -370,6 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           labelText: "Minutes",
         ),
         onChanged: (String value) {
+          newMinutes = 0;
           var newM = int.parse(value);
           newMinutes = newM;
         },
@@ -389,6 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           labelText: "Hours",
         ),
         onChanged: (String value) {
+          newHours = 0;
           var newH = int.parse(value);
           newHours = newH;
         },
@@ -418,31 +423,81 @@ class _SettingsScreenState extends State<SettingsScreen> {
           leading: IconButton(
               icon: Icon(Icons.arrow_back),
               onPressed: () {
-                Navigator.pop(context, 0);
+                cancel();
               }),
           title: Text("Settings"),
+          actions: [],
         ),
         body: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Text(
+                "Initial game time",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text("Initial game time"),
                 hourField,
                 minField,
                 secField,
-                ElevatedButton(
-                  onPressed: () {
-                    int newTime =
-                        newSeconds + (newMinutes * 60) + (newHours * 60 * 60);
-                    Navigator.pop(context, newTime);
-                  },
-                  child: Icon(Icons.thumb_up),
-                ),
               ],
+            ),
+            Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(right: 10.0),
+                    child: Ink(
+                      decoration: ShapeDecoration(
+                        color: Colors.red,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0)),
+                      ),
+                      child: IconButton(
+                        iconSize: 30,
+                        color: Colors.white,
+                        onPressed: () {
+                          cancel();
+                        },
+                        icon: Icon(Icons.cancel),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(left: 10.0),
+                    child: Ink(
+                      decoration: ShapeDecoration(
+                        color: Colors.lightGreen,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0)),
+                      ),
+                      child: IconButton(
+                        iconSize: 30,
+                        color: Colors.white,
+                        onPressed: () {
+                          int newTime = newSeconds +
+                              (newMinutes * 60) +
+                              (newHours * 60 * 60);
+                          Navigator.pop(context, newTime);
+                        },
+                        icon: Icon(Icons.thumb_up),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
