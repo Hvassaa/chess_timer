@@ -20,6 +20,7 @@ class Main extends StatelessWidget {
 }
 
 class ChessTimer extends StatefulWidget {
+  static const String route = '/chess-timer';
   @override
   _ChessTimerState createState() => _ChessTimerState();
 }
@@ -29,12 +30,13 @@ class _ChessTimerState extends State<ChessTimer> {
   CountdownUnit counter1;
   CountdownUnit counter2;
   // The "containers", which should draw buttons
-  var container1;
-  var container2;
-  var activedContainer1;
-  var activedContainer2;
-  var deactivedContainer1;
-  var deactivedContainer2;
+  Expanded container1;
+  Expanded container2;
+  Expanded activedContainer1;
+  Expanded activedContainer2;
+  Expanded deactivedContainer1;
+  Expanded deactivedContainer2;
+  GameType gameType;
 
   @override
   initState() {
@@ -53,6 +55,9 @@ class _ChessTimerState extends State<ChessTimer> {
       } else {
         counter1.stop();
         counter2.start();
+        if (gameType == GameType.fischer) {
+          counter1.giveGameTypeTime();
+        }
         setState(() {
           container1 = deactivedContainer1;
           container2 = activedContainer2;
@@ -68,6 +73,9 @@ class _ChessTimerState extends State<ChessTimer> {
       } else {
         counter2.stop();
         counter1.start();
+        if (gameType == GameType.fischer) {
+          counter2.giveGameTypeTime();
+        }
         setState(() {
           container2 = deactivedContainer2;
           container1 = activedContainer1;
@@ -103,6 +111,9 @@ class _ChessTimerState extends State<ChessTimer> {
     // initially both are active
     container1 = activedContainer1;
     container2 = activedContainer2;
+
+    // gameType is standard initially
+    gameType = GameType.standard;
   }
 
   @override
@@ -125,9 +136,7 @@ class _ChessTimerState extends State<ChessTimer> {
                   ),
                   child: IconButton(
                     onPressed: () {
-                      pause();
-                      counter1.reset();
-                      counter2.reset();
+                      reset();
                     },
                     icon: Icon(Icons.refresh),
                     color: Colors.white,
@@ -146,17 +155,21 @@ class _ChessTimerState extends State<ChessTimer> {
                     color: Colors.white,
                     iconSize: 50.0,
                     onPressed: () async {
-                      pause();
+                      reset();
                       // result is the new seconds for the timer,
-                      // could be null, if no new time is given
-                      final result = await Navigator.push(context,
+                      // could be 0, if no new time is given
+                      final DataWrapper result = await Navigator.push(context,
                           MaterialPageRoute(builder: (context) {
-                        return SettingsScreen();
+                        return SettingsScreen(
+                            orginalData: DataWrapper(
+                                gameType,
+                                counter1.getOriginalSeconds(),
+                                counter1.getGameTypeSeconds()));
                       }));
                       // update time
-                      if (result != 0) {
-                        setTime(result);
-                      }
+                      setTime(result.initialTime);
+                      setGameTypeTime(result.gameTypeTime);
+                      gameType = result.gameType;
                     },
                   ),
                 ),
@@ -192,9 +205,20 @@ class _ChessTimerState extends State<ChessTimer> {
     });
   }
 
+  void reset() {
+    pause();
+    counter1.reset();
+    counter2.reset();
+  }
+
   void setTime(int secs) {
     counter1.setOriginalSeconds(secs);
     counter2.setOriginalSeconds(secs);
+  }
+
+  void setGameTypeTime(int secs) {
+    counter1.setGameTypeTime(secs);
+    counter2.setGameTypeTime(secs);
   }
 }
 
@@ -222,6 +246,22 @@ class CountdownUnit extends StatefulWidget {
   int getSeconds() {
     return c.getSeconds();
   }
+
+  int getOriginalSeconds() {
+    return c.getOriginalSeconds();
+  }
+
+  int getGameTypeSeconds() {
+    return c.getGameTypeSeconds();
+  }
+
+  void giveGameTypeTime() {
+    c.giveGameTypeTime();
+  }
+
+  void setGameTypeTime(int seconds) {
+    c.setGameTypeTime(seconds);
+  }
 }
 
 class _CountdownUnitState extends State<CountdownUnit> {
@@ -229,11 +269,14 @@ class _CountdownUnitState extends State<CountdownUnit> {
   int millis;
   int seconds;
   Timer timer;
+  // seconds to add after your turn
+  int gameTypeTime;
 
   @override
   void initState() {
     super.initState();
-    originalSeconds = 5;
+    originalSeconds = 600;
+    gameTypeTime = 0;
     reset();
   }
 
@@ -315,9 +358,33 @@ class _CountdownUnitState extends State<CountdownUnit> {
   int getSeconds() {
     return seconds;
   }
+
+  int getOriginalSeconds() {
+    return originalSeconds;
+  }
+
+  int getGameTypeSeconds() {
+    return gameTypeTime;
+  }
+
+  void setGameTypeTime(int seconds) {
+    gameTypeTime = seconds;
+  }
+
+  void giveGameTypeTime() {
+    if (millis != originalSeconds * 1000) {
+      seconds += gameTypeTime;
+      millis += gameTypeTime * 1000;
+      setStateWrapper(seconds);
+    }
+  }
 }
 
 class SettingsScreen extends StatefulWidget {
+  static const String route = '/settings';
+  final DataWrapper orginalData;
+  SettingsScreen({Key key, @required this.orginalData}) : super(key: key);
+
   @override
   _SettingsScreenState createState() => _SettingsScreenState();
 }
@@ -326,26 +393,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int newSeconds;
   int newMinutes;
   int newHours;
-  var secController;
-  var minController;
-  var hourController;
-  var secField;
-  var minField;
-  var hourField;
+  int newIncrementOrDelaySec;
+  TextEditingController secController;
+  TextEditingController minController;
+  TextEditingController hourController;
+  TextEditingController incrementOrDelaySecController;
+  Container secField;
+  Container minField;
+  Container hourField;
+  Container incrementOrDelaySecField;
   Function cancel;
+  GameType gameType;
 
   @override
   void initState() {
     super.initState();
-    cancel = () => Navigator.pop(context, 0);
-    newSeconds = 0;
-    newMinutes = 0;
-    newHours = 0;
+    cancel = () => Navigator.pop(
+        context, widget.orginalData); //DataWrapper(gameType, 0, 0));
+    newSeconds = widget.orginalData.initialTime % 60;
+    newMinutes = (widget.orginalData.initialTime ~/ 60) % 60;
+    newHours = widget.orginalData.initialTime ~/ 3600;
+    newIncrementOrDelaySec = widget.orginalData.gameTypeTime;
 
     double fieldWidth = 100;
-    secController = TextEditingController();
-    minController = TextEditingController();
-    hourController = TextEditingController();
+    secController = TextEditingController(text: "$newSeconds");
+    minController = TextEditingController(text: "$newMinutes");
+    hourController = TextEditingController(text: "$newHours");
+    incrementOrDelaySecController =
+        TextEditingController(text: "$newIncrementOrDelaySec");
     secField = Container(
       width: fieldWidth,
       child: TextField(
@@ -404,6 +479,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+
+    incrementOrDelaySecField = Container(
+      width: fieldWidth,
+      child: TextField(
+        decoration: InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: "Seconds",
+        ),
+        onChanged: (String value) {
+          newIncrementOrDelaySec = 0;
+          var newS = int.parse(value);
+          newIncrementOrDelaySec = newS;
+        },
+        controller: incrementOrDelaySecController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+        ],
+      ),
+    );
+    gameType = widget.orginalData.gameType;
   }
 
   @override
@@ -451,6 +547,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 secField,
               ],
             ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                DropdownButton<GameType>(
+                  underline: Container(
+                    height: 2,
+                    color: Colors.blue,
+                  ),
+                  onChanged: (GameType result) => setState(
+                    () => gameType = result,
+                  ),
+                  value: gameType,
+                  items: [
+                    GameType.standard,
+                    GameType.fischer,
+                    GameType.simpleDelay,
+                    GameType.bronsteinDelay
+                  ].map<DropdownMenuItem<GameType>>((GameType val) {
+                    return DropdownMenuItem(
+                      child: Text(val.toString()),
+                      value: val,
+                    );
+                  }).toList(),
+                ),
+                incrementOrDelaySecField,
+              ],
+            ),
             Padding(
               padding: EdgeInsets.all(20.0),
               child: Row(
@@ -490,7 +614,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           int newTime = newSeconds +
                               (newMinutes * 60) +
                               (newHours * 60 * 60);
-                          Navigator.pop(context, newTime);
+                          if (newTime == 0) {
+                            newTime = widget.orginalData.initialTime;
+                          }
+                          if (newIncrementOrDelaySec == 0 &&
+                              gameType != GameType.standard) {
+                            newIncrementOrDelaySec =
+                                widget.orginalData.gameTypeTime;
+                          }
+                          Navigator.pop(
+                              context,
+                              DataWrapper(
+                                  // gameType, newTime, incrementOrDelaySecField));
+                                  gameType,
+                                  newTime,
+                                  newIncrementOrDelaySec));
                         },
                         icon: Icon(Icons.thumb_up),
                       ),
@@ -504,4 +642,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+enum GameType { standard, fischer, simpleDelay, bronsteinDelay }
+
+class DataWrapper {
+  final GameType gameType;
+  final int initialTime;
+  final int gameTypeTime;
+
+  DataWrapper(this.gameType, this.initialTime, this.gameTypeTime);
 }
