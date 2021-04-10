@@ -11,7 +11,7 @@ Features
 
 - [x] Configurable time
 - [x] "Sudden death" (Basic timing)
-- [ ] Increment/Bonus/Fischer
+- [x] Increment/Bonus/Fischer
 - [ ] Simple delay/US delay
 - [ ] Bronstein Delay
 
